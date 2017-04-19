@@ -1,7 +1,5 @@
 package accounts;
 
-import org.stellar.sdk.Asset;
-import org.stellar.sdk.AssetTypeCreditAlphaNum;
 import org.stellar.sdk.AssetTypeNative;
 import org.stellar.sdk.KeyPair;
 import org.stellar.sdk.Memo;
@@ -11,14 +9,9 @@ import org.stellar.sdk.Server;
 import org.stellar.sdk.Transaction;
 import org.stellar.sdk.responses.AccountResponse;
 import org.stellar.sdk.responses.SubmitTransactionResponse;
-import org.stellar.sdk.requests.EventListener;
-import org.stellar.sdk.requests.PaymentsRequestBuilder;
-
 import java.net.*;
 import java.io.*;
 import java.util.*;
-import org.stellar.sdk.responses.operations.OperationResponse;
-import org.stellar.sdk.responses.operations.PaymentOperationResponse;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -46,34 +39,25 @@ public class Create_User_Account {
 	public String viewBankerID(){
 		String participantInfo = null;
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
 			ResultSet rs;
-
-			// get salaries of all instructors
 			rs = statement.executeQuery("select * from participants f where f.UserName = 'BANKER'");
-		
 			String id = "";
 			rs.last();
-				id = rs.getString("AccountID");
-				participantInfo = "Banker's AccountID is : "+ id+"\n";
-		
-			// Close all statements and connections
+			id = rs.getString("AccountID");
+			participantInfo = "Banker's AccountID is : "+ id+"\n";
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -90,54 +74,57 @@ public class Create_User_Account {
 		return this.userName;
 	}
 	
-	public String decideWhoWon(){
+	public String decideWhoWon(String bankerSecretSeed) throws IOException{
 		HashMap<String, String> players = new HashMap<String, String>();
-		String participantsInfo = "";
+		String winner = "";
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
 			ResultSet rs;
-
-			// get salaries of all instructors
+			ResultSet alice = null;
+			ResultSet bob = null;
 			rs = statement.executeQuery("select * from participants f where Bet = TRUE");
-		
-			int i = 1;
-			String ParticipantID = "";
-			String ParticipantUserName = "";
-			
-
+			String randomNumber = "";
+			String hashValue = "";
+			String actualHash = "";
+			int totalRand = 0;
 			while (rs.next()) {
-				//get value of salary from each tuple
-				ParticipantID = rs.getString("AccountID");
-				ParticipantUserName = rs.getString("UserName");
-				players.put(ParticipantUserName, ParticipantID);
-				
+				randomNumber = rs.getString("RandomNumber");
+				hashValue = rs.getString("HashValue");
+				actualHash = coinflip.sha256RandomNumber(randomNumber);
+				if( hashValue.equals(actualHash)){
+					players.put(rs.getString("UserName"), randomNumber);
+					totalRand += Integer.parseInt(rs.getString("RandomNumber"));
+				}
 			}
-			
-			Set set = players.entrySet();
-			Iterator iterator = set.iterator();
-			while(iterator.hasNext()){
-				Map.Entry mentry = (Map.Entry)iterator.next();
-				System.out.println("Key is: "+ mentry.getKey() + "\nValue is :"+ mentry.getValue());
-				
+			String id = "";
+			if((totalRand % 2) == 0){
+				winner = "Alice Won!!!!!!!!!!!!!!!";
+				System.out.println(winner);
+				alice = statement.executeQuery("Select * from participants p where p.UserName = 'Alice'");
+				alice.last();
+				id = alice.getString("AccountID");
+				transferFunds(bankerSecretSeed, id, "36");
 			}
-			
-			// Close all statements and connections
+			else if((totalRand % 2) != 0){
+				winner = "Bob Won!!!!!!!!!!!!!!!!!!!!!!!!!!";
+				System.out.println(winner);
+				bob = statement.executeQuery("Select * from participants p where p.UserName = 'Bob'");
+				bob.last();
+				id = bob.getString("AccountID");
+				transferFunds(bankerSecretSeed, id, "36");
+			}
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -147,29 +134,24 @@ public class Create_User_Account {
 	    	System.out.println("SQLState: " + e.getSQLState());
 	    	System.out.println("VendorError: " + e.getErrorCode());
 	    }
-		return participantsInfo;
+		return winner;
 	}
 	
 	public boolean updateBet(){
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
-			
 			String sql = "update participants set Bet = TRUE where AccountID = '"+keyPair.getAccountId()+"'";
 			statement.executeUpdate(sql);
 			statement.close();
@@ -188,45 +170,33 @@ public class Create_User_Account {
 	public String verifyHash(String participant1, String hash){
 		String verification = null;
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
 			ResultSet rs;
-			
-
 			rs = statement.executeQuery("select from participants f");
-			
-
 			int i = 0;
 			String hashval = "";
 			String randomnum = "";
 			String name = "";
-
 			while (rs.next()) {
-				//get value of salary from each tuple
 				hashval = rs.getString("HashValue");		
 				randomnum = rs.getString("RandomNumber");
 				if(coinflip.sha256RandomNumber(randomnum).equals(hashval)){
 					verification = "Verified!";
 				}
 				System.out.println("Participant "+ ++i + "\nUserName is : " + name+"\nRandom Number is : "+ randomnum+"Hash Value is : "+hashval+"\n");
-				
 			}
-			// Close all statements and connections
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -241,27 +211,21 @@ public class Create_User_Account {
 	
 	public void updateRandHash(String randomNumber, String hashValue, String accountID){
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
-			
 			String sql = "update participants set RandomNumber = '"+randomNumber+"', HashValue = '"+hashValue+"' where AccountID = '"+accountID+"'";
 			statement.executeUpdate(sql);
-
 			statement.close();
 			conn1.close();
 		}
@@ -274,45 +238,32 @@ public class Create_User_Account {
 	
 	public void updateDatabase(String userName, String accountID, String secretSeed){
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
 			Statement statement2 = conn1.createStatement();
 			ResultSet rs;
-			
 			String sql = "Insert into participants (UserName, AccountID, SecretSeed) values('"+userName+"' , '"+accountID+"' , '"+secretSeed+"')";
 			statement2.executeUpdate(sql);
-
-			// get salaries of all instructors
 			rs = statement.executeQuery("select * from participants f");
-			
-
 			int i = 0;
 			String name = "";
 			String id = "";
-
 			while (rs.next()) {
-				//get value of salary from each tuple
 				name = rs.getString("UserName");		
 				id = rs.getString("AccountID");
 				System.out.println("Participant "+ ++i + "\nUserName is : " + name+"\nAccountID is : "+ id+"\n");
-				
 			}
-			// Close all statements and connections
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -328,46 +279,33 @@ public class Create_User_Account {
 	public String viewParticipants(){
 		String participantsInfo = "";
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
 			ResultSet rs;
-
-			// get salaries of all instructors
 			rs = statement.executeQuery("select * from participants f");
-		
 			int i = 0;
 			String name = "";
 			String id = "";
 			String secret = "";
-
 			while (rs.next()) {
-				//get value of salary from each tuple
 				name = rs.getString("UserName");		
 				id = rs.getString("AccountID");
 				secret = rs.getString("SecretSeed");
 				String participantInfo = "Participant "+ ++i + "\nUserName is : " + name+"\nAccountID is : "+ id+"\nSecretSeed is :"+ secret+"\n";
 				System.out.println(participantInfo);
 				participantsInfo = participantsInfo + participantInfo;
-				
-				
-				
 			}
-			// Close all statements and connections
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -382,28 +320,21 @@ public class Create_User_Account {
 	
 	public void deleteAccounts(){
 		try {
-			// Load the driver (registers itself)
 			Class.forName("com.mysql.jdbc.Driver");
 		} catch (Exception E) {
 			System.err.println("Unable to load driver.");
 			E.printStackTrace();
 		}
 		try {
-			// Connect to the database
 			Connection conn1;
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
-
-			// Create Statement and ResultSet variables to use throughout the project
 			Statement statement = conn1.createStatement();
-			
 			String sql = "Delete from participants";
 			statement.executeUpdate(sql);
-
-			// Close all statements and connections
 			statement.close();
 			conn1.close();
 		}
@@ -434,6 +365,7 @@ public class Create_User_Account {
 		catch (IOException e) {
 			e.printStackTrace();
 		}
+		@SuppressWarnings("resource")
 		String body = new Scanner(response, "UTF-8").useDelimiter("\\A").next();
 		return "SUCCESS CREATED NEW ACCOUNT\n" + body;
 	}

@@ -12,7 +12,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import java.awt.Font;
-import javax.swing.JComboBox;
+
 
 public class Participant {
 
@@ -99,9 +99,11 @@ public class Participant {
 		
 		JButton TransferFundsbtn = new JButton("Transfer Funds");
 		TransferFundsbtn.addActionListener(new ActionListener() {
+			String status = "";
 			public void actionPerformed(ActionEvent arg0) {
 				try {
-					newUser.transferFunds(newUser.getSecretSeed() ,accountIDTextField.getText(), amountTextField.getText());
+					status = newUser.transferFunds(newUser.getSecretSeed() ,accountIDTextField.getText(), amountTextField.getText());
+					displayText.setText(status);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}

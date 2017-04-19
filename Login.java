@@ -113,7 +113,7 @@ public class Login {
 
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				String selectItem =  (String) ((JComboBox) arg0.getSource()).getSelectedItem();
+				String selectItem =  (String) ((JComboBox<?>) arg0.getSource()).getSelectedItem();
 				if(selectItem.equals("Participant")){
 					selected = 1;
 				}

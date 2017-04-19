@@ -7,11 +7,7 @@ import javax.swing.JTextArea;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+
 import java.awt.event.ActionEvent;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
@@ -75,7 +71,7 @@ public class Banker {
 		btnViewParticitpants.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				String participants = user.viewParticipants();
-				displayArea.append(participants);
+				displayArea.setText(participants);
 			}
 		});
 		btnViewParticitpants.setBounds(26, 261, 143, 23);
@@ -144,7 +140,11 @@ public class Banker {
 		btnVerifyHashValues = new JButton("Verify Hash Values");
 		btnVerifyHashValues.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				user.decideWhoWon();
+				try {
+				displayArea.setText(user.decideWhoWon(user.getSecretSeed()));	
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
 			}
 		});
 		btnVerifyHashValues.setBounds(89, 334, 143, 23);
