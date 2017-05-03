@@ -36,6 +36,7 @@ public class Create_User_Account {
 		updateDatabase(getUserName(), getAccountId(), getSecretSeed());
 	}
 	
+	
 	public String viewBankerID(){
 		String participantInfo = null;
 		try {
@@ -70,6 +71,34 @@ public class Create_User_Account {
 		return participantInfo;
 	}
 	
+	public String getWinner(){
+		String participantInfo = null;
+		try {
+			Connection conn1;
+			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+			String user = "root";
+			String password = "root";
+			conn1 = DriverManager.getConnection(dbUrl, user, password);
+			System.out.println("*** Connected to the database ***");
+			Statement statement = conn1.createStatement();
+			ResultSet rs;
+			rs = statement.executeQuery("select * from participants f where f.Winner = TRUE");
+			String name = "";
+			rs.last();
+			name = rs.getString("UserName");
+			participantInfo = "Winner's UserName is : "+ name+"\n";
+			statement.close();
+			rs.close();
+			conn1.close();
+		}
+	    catch (SQLException e) {
+	    	System.out.println("SQLException: " + e.getMessage());
+	    	System.out.println("SQLState: " + e.getSQLState());
+	    	System.out.println("VendorError: " + e.getErrorCode());
+	    }
+		return participantInfo;
+	}
+	
 	public String getUserName(){
 		return this.userName;
 	}
@@ -92,8 +121,8 @@ public class Create_User_Account {
 			System.out.println("*** Connected to the database ***");
 			Statement statement = conn1.createStatement();
 			ResultSet rs;
-			ResultSet alice = null;
-			ResultSet bob = null;
+			ResultSet won = null;
+			ResultSet test = null;
 			rs = statement.executeQuery("select * from participants f where Bet = TRUE");
 			String randomNumber = "";
 			String hashValue = "";
@@ -109,22 +138,24 @@ public class Create_User_Account {
 				}
 			}
 			String id = "";
-			if((totalRand % 2) == 0){
-				winner = "Alice Won!!!!!!!!!!!!!!!";
-				System.out.println(winner);
-				alice = statement.executeQuery("Select * from participants p where p.UserName = 'Alice'");
-				alice.last();
-				id = alice.getString("AccountID");
-				transferFunds(bankerSecretSeed, id, "36");
-			}
-			else if((totalRand % 2) != 0){
-				winner = "Bob Won!!!!!!!!!!!!!!!!!!!!!!!!!!";
-				System.out.println(winner);
-				bob = statement.executeQuery("Select * from participants p where p.UserName = 'Bob'");
-				bob.last();
-				id = bob.getString("AccountID");
-				transferFunds(bankerSecretSeed, id, "36");
-			}
+			test = statement.executeQuery("select * from participants f where Bet = TRUE");
+			int number = 0;
+			test.last();
+			number = test.getRow();
+			System.out.println(number);
+			int winnerID = totalRand % number;
+			int totalPot = number * 20;
+			String winnerShare = String.valueOf(totalPot * 0.95);
+			won = statement.executeQuery("select * from participants p where p.ID = "+winnerID);
+			won.last();
+			id = won.getString("AccountID");
+			winner = won.getString("UserName") + "Won!";
+			System.out.println(winner);
+			transferFunds(bankerSecretSeed, id, winnerShare);
+			String updateWinner = "update participants p set p.Winner = TRUE where AccountID = '"+id+"'";
+			statement.executeUpdate(updateWinner);
+			
+			
 			statement.close();
 			rs.close();
 			conn1.close();
@@ -135,6 +166,47 @@ public class Create_User_Account {
 	    	System.out.println("VendorError: " + e.getErrorCode());
 	    }
 		return winner;
+	}
+	
+	public void updateID(){
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (Exception E) {
+			System.err.println("Unable to load driver.");
+			E.printStackTrace();
+		}
+		try {
+			Connection conn1;
+			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+			String user = "root";
+			String password = "root";
+			ResultSet res;
+			int ID = 0;
+			int newBanker = 0;
+			conn1 = DriverManager.getConnection(dbUrl, user, password);
+			System.out.println("*** Connected to the database ***");
+			Statement statement = conn1.createStatement();
+			res = statement.executeQuery("select * from participants f where f.UserName = 'BANKER'");
+			int IdentificationNumber = 0;
+			res.last();
+			IdentificationNumber = res.getInt("IdentificationNumber");
+			ID = IdentificationNumber - 1;
+			newBanker ++;
+			String updateID = "update participants set ID = "+ID+" where AccountID = '"+keyPair.getAccountId()+"'";
+			statement.executeUpdate(updateID);
+			String updateBanker = "update participants IdentificationNumber = "+ newBanker + "where UserName = 'BANKER'";
+			statement.executeUpdate(updateBanker);
+			System.out.println(IdentificationNumber);
+			System.out.println(ID);
+			
+			statement.close();
+			conn1.close();
+		}
+	    catch (SQLException e) {
+	    	System.out.println("SQLException: " + e.getMessage());
+	    	System.out.println("SQLState: " + e.getSQLState());
+	    	System.out.println("VendorError: " + e.getErrorCode());
+	    }
 	}
 	
 	public boolean updateBet(){
@@ -149,11 +221,25 @@ public class Create_User_Account {
 			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
 			String user = "root";
 			String password = "root";
+			ResultSet res;
+			int ID = 0;
+			int newP = 0;
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
 			Statement statement = conn1.createStatement();
 			String sql = "update participants set Bet = TRUE where AccountID = '"+keyPair.getAccountId()+"'";
 			statement.executeUpdate(sql);
+			res = statement.executeQuery("select * from participants f where f.UserName = 'BANKER'");
+			int Number = 0;
+			res.last();
+			Number = res.getInt("IdentificationNumber");
+			ID = Number + 1;
+			newP = Number - 1;
+			String updateID = "update participants set ID = "+newP+" where AccountID = '"+keyPair.getAccountId()+"'";
+			statement.executeUpdate(updateID);
+			String updatePID = "update participants set IdentificationNumber = "+ ID +" where UserName = 'BANKER'";
+			statement.executeUpdate(updatePID);
+			System.out.println(ID);
 			statement.close();
 			conn1.close();
 			return true;
@@ -165,6 +251,34 @@ public class Create_User_Account {
 	    	return false;
 	    }
 
+	}
+	
+	public void updateBankerID(int id){
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (Exception E) {
+			System.err.println("Unable to load driver.");
+			E.printStackTrace();
+		}
+		try {
+			Connection conn1;
+			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+			String user = "root";
+			String password = "root";
+			conn1 = DriverManager.getConnection(dbUrl, user, password);
+			System.out.println("*** Connected to the database ***");
+			Statement statement = conn1.createStatement();
+			String updateBanker = "update participants f set f.IdentificationNumber = "+id+" where UserName = 'BANKER'";
+			statement.executeUpdate(updateBanker);
+			System.out.println(id);
+			statement.close();
+			conn1.close();
+		}
+	    catch (SQLException e) {
+	    	System.out.println("SQLException: " + e.getMessage());
+	    	System.out.println("SQLState: " + e.getSQLState());
+	    	System.out.println("VendorError: " + e.getErrorCode());
+	    }
 	}
 	
 	public String verifyHash(String participant1, String hash){
@@ -276,6 +390,59 @@ public class Create_User_Account {
 
 	}
 	
+	public String viewAccountHistory(){
+		String history = "";
+		String participantInfo = "";
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (Exception E) {
+			System.err.println("Unable to load driver.");
+			E.printStackTrace();
+		}
+		try {
+			Connection conn1;
+			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+			String user = "root";
+			String password = "root";
+			conn1 = DriverManager.getConnection(dbUrl, user, password);
+			System.out.println("*** Connected to the database ***");
+			Statement statement = conn1.createStatement();
+			ResultSet rs;
+			rs = statement.executeQuery("select * from transactions f where f.Sender = '"+ getAccountId()+"'");
+			String rec = "";
+			int ammount = 0;
+			while (rs.next()) {
+				rec = rs.getString("Receiver");		
+				ammount = rs.getInt("Amount");
+				participantInfo = "You Sent "+ ammount + " to AccountId: "+rec+"\n";
+				System.out.println(participantInfo);
+				history = history + participantInfo;
+			}
+			
+			rs = statement.executeQuery("Select * from transactions f where f.Receiver = '"+ getAccountId()+"'");
+			String sender = "";
+			int amount = 0;
+			while (rs.next()){
+				sender = rs.getString("Sender");
+				ammount = rs.getInt("Amount");
+				participantInfo = "You Received "+ ammount + " from AccountId: "+sender+"\n";
+				System.out.println(participantInfo);
+				history = history + participantInfo;
+			}
+			statement.close();
+			rs.close();
+			conn1.close();
+		}
+	    catch (SQLException e) {
+	    	System.out.println("SQLException: " + e.getMessage());
+	    	System.out.println("SQLState: " + e.getSQLState());
+	    	System.out.println("VendorError: " + e.getErrorCode());
+	    }
+		
+		
+		return history;
+	}
+	
 	public String viewParticipants(){
 		String participantsInfo = "";
 		try {
@@ -333,8 +500,10 @@ public class Create_User_Account {
 			conn1 = DriverManager.getConnection(dbUrl, user, password);
 			System.out.println("*** Connected to the database ***");
 			Statement statement = conn1.createStatement();
-			String sql = "Delete from participants";
+			String sql = "Truncate Table participants";
 			statement.executeUpdate(sql);
+			sql = "Truncate Table transactions";
+			statement.executeQuery(sql);
 			statement.close();
 			conn1.close();
 		}
@@ -429,6 +598,45 @@ public class Create_User_Account {
 			  System.out.println("Success!");
 			  status = "Successful!!!!!!";
 			  System.out.println(submitTransactionResponse);
+			  // Store in DB
+			  try {
+					Class.forName("com.mysql.jdbc.Driver");
+				} catch (Exception E) {
+					System.err.println("Unable to load driver.");
+					E.printStackTrace();
+				}
+				try {
+					Connection conn1;
+					String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+					String user = "root";
+					String password = "root";
+					conn1 = DriverManager.getConnection(dbUrl, user, password);
+					System.out.println("*** Connected to the database ***");
+					Statement statement = conn1.createStatement();
+					Statement statement2 = conn1.createStatement();
+					ResultSet rs;
+					String sql = "Insert into transactions (Sender, Receiver, Amount) values('"+ getAccountId() +"' , '"+ targetAccountId +"' , " + ammount + ")";
+					statement2.executeUpdate(sql);
+					rs = statement.executeQuery("select * from transactions t");
+					int i = 0;
+					String name = "";
+					String id = "";
+					int amt = 0;
+					while (rs.next()) {
+						name = rs.getString("Sender");		
+						id = rs.getString("Receiver");
+						amt = rs.getInt("Amount");
+						System.out.println("Participant "+ ++i + "\nUserName is : " + name+"\nAccountID is : "+ id+"\nAmount is : "+amt +"\n");
+					}
+					statement.close();
+					rs.close();
+					conn1.close();
+				}
+			    catch (SQLException e) {
+			    	System.out.println("SQLException: " + e.getMessage());
+			    	System.out.println("SQLState: " + e.getSQLState());
+			    	System.out.println("VendorError: " + e.getErrorCode());
+			    }
 			}
 			catch (Exception e) {
 				status = "Failure!!!!!!";
