@@ -3,6 +3,11 @@ package accounts;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -95,8 +100,10 @@ public class Login {
 					EventQueue.invokeLater(new Runnable() {
 						public void run() {
 							try {
-								banker = new Banker();
-								banker.getFrame().setVisible(true);
+								if( ! checkBanker()){
+									banker = new Banker();
+									banker.getFrame().setVisible(true);
+								}
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
@@ -125,4 +132,39 @@ public class Login {
 			
 		});
 	}
+	
+	public boolean checkBanker(){
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (Exception E) {
+			System.err.println("Unable to load driver.");
+			E.printStackTrace();
+		}
+		try {
+			Connection conn1;
+			String dbUrl = "jdbc:mysql://localhost:3306/stellar_data";
+			String user = "root";
+			String password = "root";
+			conn1 = DriverManager.getConnection(dbUrl, user, password);
+			System.out.println("*** Connected to the database ***");
+			Statement statement = conn1.createStatement();
+			ResultSet rs;
+			rs = statement.executeQuery("select * from participants f where f.UserName = 'BANKER'");
+			rs.last();
+			if(rs.getRow() > 0){
+				return true;
+			}
+			statement.close();
+			rs.close();
+			conn1.close();
+		}
+	    catch (SQLException e) {
+	    	System.out.println("SQLException: " + e.getMessage());
+	    	System.out.println("SQLState: " + e.getSQLState());
+	    	System.out.println("VendorError: " + e.getErrorCode());
+	    }
+		
+		return false;
+	}
+	
 }
