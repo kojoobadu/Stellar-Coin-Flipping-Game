@@ -52,6 +52,7 @@ public class Banker {
 	 */
 	public Banker() {
 		initialize();
+		user.updateBankerID(1);
 	}
 
 	/**
@@ -142,6 +143,7 @@ public class Banker {
 			public void actionPerformed(ActionEvent e) {
 				try {
 				displayArea.setText(user.decideWhoWon(user.getSecretSeed()));	
+				displayArea.append("\n$Winning transferred");
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
@@ -163,7 +165,11 @@ public class Banker {
 		lblWelcomeBanker.setHorizontalAlignment(SwingConstants.CENTER);
 		lblWelcomeBanker.setBounds(239, 6, 170, 14);
 		frame.getContentPane().add(lblWelcomeBanker);
+		
+		
 	}
+	
+	
 	
 
 	public JFrame getFrame() {
@@ -173,4 +179,6 @@ public class Banker {
 	public void setFrame(JFrame frame) {
 		this.frame = frame;
 	}
+	
+
 }
